@@ -36,6 +36,12 @@
 	<bean id="preAuthenticatedUserDetailsService"
 		class="org.springframework.security.providers.preauth.PreAuthenticatedGrantedAuthoritiesUserDetailsService" />
 
+    <bean id="preAuthAuthenticationProvider" class="org.springframework.security.providers.preauth.PreAuthenticatedAuthenticationProvider">
+        <!-- use agilefant user details service -->
+        <property name="preAuthenticatedUserDetailsService" ref="preAuthenticatedUserDetailsService" />
+
+    </bean>
+
 	<bean id="j2eePreAuthFilter"
 		class="org.springframework.security.ui.preauth.j2ee.J2eePreAuthenticatedProcessingFilter">
 		<property name="authenticationManager" ref="authenticationManager" />
@@ -198,7 +204,10 @@
 		class="org.springframework.security.providers.ProviderManager">
 		<property name="providers">
 			<list>
-				<ref local="daoAuthenticationProvider" />
+
+                <ref local="preAuthAuthenticationProvider" />
+
+                <ref local="daoAuthenticationProvider" />
 				<bean
 					class="org.springframework.security.providers.anonymous.AnonymousAuthenticationProvider">
 					<property name="key"
