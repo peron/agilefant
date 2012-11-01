@@ -23,13 +23,13 @@
 				pattern="/ROIteration.action" />
 			<security:filter-chain filters="readonlyFilter"
 				pattern="/ajax/RO*" />
-			<security:filter-chain
-				filters="httpSessionContextIntegrationFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,ajaxExceptionTranslationFilter,filterInvocationInterceptor"
-				pattern="/ajax/**" />
-			<security:filter-chain
-				filters="httpSessionContextIntegrationFilter,j2eePreAuthFilter,logoutFilter,authenticationProcessingFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,exceptionTranslationFilter,filterInvocationInterceptor"
-				pattern="/**" />
-		</security:filter-chain-map>
+            <security:filter-chain
+            filters="httpSessionContextIntegrationFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,ajaxExceptionTranslationFilter,filterInvocationInterceptor"
+            pattern="/ajax/**" />
+            <security:filter-chain
+            filters="httpSessionContextIntegrationFilter,j2eePreAuthFilter,logoutFilter,authenticationProcessingFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,exceptionTranslationFilter,filterInvocationInterceptor"
+            pattern="/**" />
+        </security:filter-chain-map>
 	</bean>
 
 
@@ -37,8 +37,8 @@
 		class="fi.hut.soberit.agilefant.security.PreAuthenticatedAgilefantUserDetailsService"
             autowire="byType" />
 
-    <bean id="preAuthAuthenticationProvider" class="org.springframework.security.providers.preauth.PreAuthenticatedAuthenticationProvider">
-        <!-- use agilefant user details service -->
+    <bean id="preAuthAuthenticationProvider"
+          class="org.springframework.security.providers.preauth.PreAuthenticatedAuthenticationProvider">
         <property name="preAuthenticatedUserDetailsService" ref="preAuthenticatedUserDetailsService" />
 
     </bean>
