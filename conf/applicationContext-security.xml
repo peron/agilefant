@@ -34,7 +34,8 @@
 
 
 	<bean id="preAuthenticatedUserDetailsService"
-		class="org.springframework.security.providers.preauth.PreAuthenticatedGrantedAuthoritiesUserDetailsService" />
+		class="fi.hut.soberit.agilefant.security.PreAuthenticatedAgilefantUserDetailsService"
+            autowire="byType" />
 
     <bean id="preAuthAuthenticationProvider" class="org.springframework.security.providers.preauth.PreAuthenticatedAuthenticationProvider">
         <!-- use agilefant user details service -->
