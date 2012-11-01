@@ -1,6 +1,9 @@
 package fi.hut.soberit.agilefant.web;
 
 
+import fi.hut.soberit.agilefant.business.UserBusiness;
+import fi.hut.soberit.agilefant.model.User;
+import fi.hut.soberit.agilefant.security.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -21,13 +24,16 @@ public class LoginContextAction extends ActionSupport {
     
     @Autowired
     private BacklogBusiness backlogBusiness;
-    
 
     @Override
     public String execute(){
-        if (backlogBusiness.countAll() == 0) {
+
+        User user = SecurityUtil.getLoggedUser();
+        if (user.getEmail() == null || user.getEmail().length() == 0
+                || user.getInitials() == null || user.getInitials().length() == 0) {
+            return "edit";
+        } else if (backlogBusiness.countAll() == 0)
             return "help";
-        }
         else if (settingBusiness.isDailyWork()) {
             return "dailyWork";
         }
@@ -35,5 +41,4 @@ public class LoginContextAction extends ActionSupport {
             return "selectBacklog";
         }
     }
-
 }

@@ -10,7 +10,7 @@
 	<classpathentry kind="lib" path="lib/freemarker-2.3.13.jar"/>
 	<classpathentry kind="lib" path="lib/ognl-2.6.11.jar"/>
 	<classpathentry kind="lib" path="lib/struts2-core-2.1.6.jar"/>
-	<classpathentry kind="lib" path="lib/xwork-2.1.2.jar"/>
+	<classpathentry kind="lib" path="lib/xwork-2.1.2.jar" sourcepath="lib-src/xwork-2.1.2-sources.jar"/>
 	<classpathentry kind="lib" path="lib/dom4j-1.6.1.jar"/>
 	<classpathentry kind="lib" path="lib/struts2-spring-plugin-2.1.6.jar"/>
 	<classpathentry kind="lib" path="lib/commons-lang-2.3.jar"/>

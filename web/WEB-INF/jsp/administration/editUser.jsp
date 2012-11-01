@@ -21,7 +21,13 @@
 <c:if test="${currentUser.admin || userId == currentUser.id}">
 <script type="text/javascript">
 $(document).ready(function() {
-  var controller = new UserController({
+<c:if test="${currentUser.email == null}">
+    MessageDisplay.Error("Please make sure that your user info is complete! Your \"Email\" address is missing.");
+</c:if>
+<c:if test="${currentUser.initials == null}">
+MessageDisplay.Error("Please make sure that your user info is complete! Your \"Inititals\" are missing.");
+</c:if>
+    var controller = new UserController({
     id:                  ${userId},
     userInfoElement:     $('#userInfoDiv'),
     passwordElement:     $('#changePasswordDiv')
