@@ -27,10 +27,50 @@
 				filters="httpSessionContextIntegrationFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,ajaxExceptionTranslationFilter,filterInvocationInterceptor"
 				pattern="/ajax/**" />
 			<security:filter-chain
-				filters="httpSessionContextIntegrationFilter,logoutFilter,authenticationProcessingFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,exceptionTranslationFilter,filterInvocationInterceptor"
+				filters="httpSessionContextIntegrationFilter,j2eePreAuthFilter,logoutFilter,authenticationProcessingFilter,securityContextHolderAwareRequestFilter,rememberMeProcessingFilter,anonymousProcessingFilter,exceptionTranslationFilter,filterInvocationInterceptor"
 				pattern="/**" />
 		</security:filter-chain-map>
 	</bean>
+
+
+	<bean id="preAuthenticatedUserDetailsService"
+		class="org.springframework.security.providers.preauth.PreAuthenticatedGrantedAuthoritiesUserDetailsService" />
+
+	<bean id="j2eePreAuthFilter"
+		class="org.springframework.security.ui.preauth.j2ee.J2eePreAuthenticatedProcessingFilter">
+		<property name="authenticationManager" ref="authenticationManager" />
+		<property name="authenticationDetailsSource">
+			<bean
+				class="org.springframework.security.ui.preauth.j2ee.J2eeBasedPreAuthenticatedWebAuthenticationDetailsSource">
+				<property name="mappableRolesRetriever">
+					<bean class="org.springframework.security.ui.preauth.j2ee.WebXmlMappableAttributesRetriever" >
+						<property name="webXmlInputStream">
+							<bean factory-bean="webXmlResource" factory-method="getInputStream" />
+						</property>
+					</bean>
+				</property>
+				<property name="userRoles2GrantedAuthoritiesMapper">
+					<bean
+						class="org.springframework.security.authoritymapping.SimpleAttributes2GrantedAuthoritiesMapper">
+						<property name="convertAttributeToUpperCase" value="true" />
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="webXmlResource" class="org.springframework.web.context.support.ServletContextResource" >
+		<constructor-arg ref="servletContext" />
+		<constructor-arg value="/WEB-INF/web.xml" />
+	</bean>
+	<bean id="servletContext" class="org.springframework.web.context.support.ServletContextFactoryBean" />
+	
+<!-- 
+	<bean id="preAuthenticatedProcessingFilterEntryPoint"
+		class="org.springframework.security.web.authentication.Http403ForbiddenEntryPoint" />
+ -->
+
+
 	
 	<bean id="remoteServicesFilter" class="fi.hut.soberit.agilefant.security.RemoteServicesFilter" />
 	
@@ -80,11 +120,9 @@
 			value="anonymousUser,ROLE_ANONYMOUS" />
 	</bean>
 
-	<bean id="exceptionTranslationFilter"
-		class="org.springframework.security.ui.ExceptionTranslationFilter">
+	<bean id="exceptionTranslationFilter" class="org.springframework.security.ui.ExceptionTranslationFilter">
 		<property name="authenticationEntryPoint">
-			<bean
-				class="org.springframework.security.ui.webapp.AuthenticationProcessingFilterEntryPoint">
+			<bean class="org.springframework.security.ui.webapp.AuthenticationProcessingFilterEntryPoint">
 				<property name="loginFormUrl" value="/login.jsp" />
 				<property name="forceHttps" value="false" />
 			</bean>
