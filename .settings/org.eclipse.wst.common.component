@@ -4,7 +4,12 @@
         <wb-resource deploy-path="/" source-path="/web"/>
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/src"/>
         <wb-resource deploy-path="/WEB-INF/" source-path="/conf"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/test"/>
+        <dependent-module archiveName="commons-discovery-0.2.jar" deploy-path="/WEB-INF/lib" handle="module:/classpath/lib/agilefant/lib/commons-discovery-0.2.jar">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
+        <dependent-module archiveName="wsdl4j.jar" deploy-path="/WEB-INF/lib" handle="module:/classpath/lib/agilefant/lib/wsdl4j.jar">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
 		<property name="context-root" value="agilefant"/>
 		<property name="java-output-path" value="build/classes"/>
 	</wb-module>
