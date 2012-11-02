@@ -13,7 +13,6 @@ import com.canoo.jira.soap.client.JiraSoapService;
 import com.canoo.jira.soap.client.JiraSoapServiceServiceLocator;
 
 import fi.hut.soberit.agilefant.business.ProductBusiness;
-import fi.hut.soberit.agilefant.business.impl.MenuBusinessImpl;
 import fi.hut.soberit.agilefant.model.Product;
 
 @Service("jiraSyncService")
@@ -64,5 +63,14 @@ public class JiraSyncServiceImpl {
             LOG.severe("Rock bottom: " + e.getLocalizedMessage());
             e.printStackTrace();
         }
+    }
+    
+    public void synchronizeProject(String aProductName, String aProjectName, String jProjectName, String jiraURL, String jiraUser, String jiraPassword) {
+        
+    }
+    
+    public static void main(String[] args) {
+        JiraSyncServiceImpl service = new JiraSyncServiceImpl();
+        
     }
 }
