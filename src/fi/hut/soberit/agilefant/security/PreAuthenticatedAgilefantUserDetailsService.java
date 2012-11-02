@@ -1,6 +1,7 @@
 package fi.hut.soberit.agilefant.security;
 
 import fi.hut.soberit.agilefant.business.UserBusiness;
+import fi.hut.soberit.agilefant.model.ExactEstimate;
 import fi.hut.soberit.agilefant.model.User;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.*;
@@ -12,6 +13,9 @@ import org.springframework.security.userdetails.UsernameNotFoundException;
 public class PreAuthenticatedAgilefantUserDetailsService implements AuthenticationUserDetailsService {
 
 
+    public static final String EMPTY_TEXT = "PLEASE UPDATE";
+    public static final String EMPTY_EMAIL = "PLEASE.UPDATE@YOUR.DOM";
+    private static final String EMPTY_PASSWORD = "";
     private UserBusiness userBusiness;
 
     public void setUserBusiness(UserBusiness userBusiness) {
@@ -28,9 +32,11 @@ public class PreAuthenticatedAgilefantUserDetailsService implements Authenticati
         if (user == null) {
             user = new User();
             user.setLoginName(userName);
-            user.setFullName(userName);
+            user.setFullName(EMPTY_TEXT);
+            user.setInitials(EMPTY_TEXT);
+            user.setEmail(EMPTY_EMAIL);
             user.setAdmin(false);
-            user = userBusiness.storeUser(user, null, "","");
+            user = userBusiness.storeUser(user, null, EMPTY_PASSWORD,EMPTY_PASSWORD);
         }
 
         // success, return UserDetails-instance

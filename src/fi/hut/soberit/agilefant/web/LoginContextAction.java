@@ -1,17 +1,17 @@
 package fi.hut.soberit.agilefant.web;
 
 
-import fi.hut.soberit.agilefant.business.UserBusiness;
+import com.opensymphony.xwork2.ActionSupport;
+import fi.hut.soberit.agilefant.business.BacklogBusiness;
+import fi.hut.soberit.agilefant.business.SettingBusiness;
 import fi.hut.soberit.agilefant.model.User;
 import fi.hut.soberit.agilefant.security.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.opensymphony.xwork2.ActionSupport;
-
-import fi.hut.soberit.agilefant.business.BacklogBusiness;
-import fi.hut.soberit.agilefant.business.SettingBusiness;
+import static fi.hut.soberit.agilefant.security.PreAuthenticatedAgilefantUserDetailsService.EMPTY_EMAIL;
+import static fi.hut.soberit.agilefant.security.PreAuthenticatedAgilefantUserDetailsService.EMPTY_TEXT;
 
 @Component("loginContextAction")
 @Scope("prototype")
@@ -29,8 +29,7 @@ public class LoginContextAction extends ActionSupport {
     public String execute(){
 
         User user = SecurityUtil.getLoggedUser();
-        if (user.getEmail() == null || user.getEmail().length() == 0
-                || user.getInitials() == null || user.getInitials().length() == 0) {
+        if (isIncomplete(user)) {
             return "edit";
         } else if (backlogBusiness.countAll() == 0)
             return "help";
@@ -40,5 +39,11 @@ public class LoginContextAction extends ActionSupport {
         else {
             return "selectBacklog";
         }
+    }
+
+    private boolean isIncomplete(User user) {
+        return EMPTY_EMAIL.equals(user.getEmail())
+                || EMPTY_TEXT.equals(user.getInitials())
+                || EMPTY_TEXT.equals(user.getFullName());
     }
 }
