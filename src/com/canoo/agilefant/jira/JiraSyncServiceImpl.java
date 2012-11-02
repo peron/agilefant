@@ -4,23 +4,30 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
 
 import javax.xml.rpc.ServiceException;
 
+import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.atlassian.jira.rpc.exception.RemoteAuthenticationException;
 import com.atlassian.jira.rpc.exception.RemotePermissionException;
+import com.atlassian.jira.rpc.soap.beans.RemoteIssue;
 import com.atlassian.jira.rpc.soap.beans.RemoteProject;
+import com.atlassian.jira.rpc.soap.beans.RemoteVersion;
 import com.canoo.jira.soap.client.JiraSoapService;
 import com.canoo.jira.soap.client.JiraSoapServiceServiceLocator;
 
+import fi.hut.soberit.agilefant.business.IterationBusiness;
 import fi.hut.soberit.agilefant.business.ProductBusiness;
 import fi.hut.soberit.agilefant.business.ProjectBusiness;
+import fi.hut.soberit.agilefant.model.Backlog;
+import fi.hut.soberit.agilefant.model.Iteration;
 import fi.hut.soberit.agilefant.model.Product;
 import fi.hut.soberit.agilefant.model.Project;
 
@@ -33,6 +40,9 @@ public class JiraSyncServiceImpl {
 
     @Autowired
     private ProjectBusiness projectBusiness;
+    
+    @Autowired
+    private IterationBusiness iterationBusiness;
     
     public void getAllJiraProducts() {
         LOG.info("Adding JIRA projects.");
@@ -100,11 +110,58 @@ public class JiraSyncServiceImpl {
 
         RemoteProject jiraProject = jiraService.getProjectByKey(token, jProjectKey);
         
-        Project project = findAgilefantProject(jiraProject);
+        Project project = findAgilefantProject(jiraProject.getName());
         if (project == null) {
             project = createAgilefantProject(jiraProject, aProductName);
         }
         
+        RemoteVersion[] versions = jiraService.getVersions(token, jiraProject.getKey());
+        for (RemoteVersion version : versions) {
+            Iteration iteration = findIteration(version.getName());
+            if (iteration == null) {
+                iteration = createIteration(version, project);
+                LOG.info(String.format("Iteration %s created. (%d)", iteration.getName(), iteration.getId()));
+            }
+        }
+        
+        String[] projectKeys = {jProjectKey};
+//        RemoteIssue[] issues = jiraService.getIssuesFromTextSearchWithProject(token, projectKeys, "", 4000);
+//        LOG.info(String.format("%d issues returned.", issues.length));
+    }
+
+    private Iteration createIteration(RemoteVersion version, Project project) {
+        LOG.info(String.format("Creating iteration '%s' in project '%s'.", version.getName(), project.getName()));
+        Iteration iteration = new Iteration();
+        
+        iteration.setName(version.getName());
+        Calendar releaseDate = version.getReleaseDate();
+        DateTime endDate;
+        if (releaseDate != null) {
+            endDate = new DateTime(releaseDate.getTimeInMillis());
+        }
+        else {
+            DateTime today = new DateTime();
+            endDate = today.plusDays(90);
+        }
+        iteration.setStartDate(endDate.minusDays(90));  // TODO: Find better way to set start date.
+        iteration.setEndDate(endDate);
+        iteration.setParent(project);
+        
+        int iterationId = iterationBusiness.create(iteration);
+        return iterationBusiness.retrieve(iterationId);
+    }
+
+    private Iteration findIteration(String name) {
+        Collection<Iteration> iterations = iterationBusiness.retrieveAll();
+        for (Iteration iteration : iterations) {
+            if (iteration.getName().equals(name)) {
+                LOG.info(String.format("Iteration '%s' found.", iteration.getName()));
+                return iteration;
+            }
+        }
+        
+        LOG.info(String.format("Iteration '%s' could not be found.", name));
+        return null;
     }
 
     private Project createAgilefantProject(RemoteProject jiraProject, String productName) {
@@ -112,7 +169,7 @@ public class JiraSyncServiceImpl {
         Project project = new Project();
         project.setDescription(jiraProject.getDescription());
         project.setName(jiraProject.getName());
-        
+
         Product product = findAgilefantProduct(productName);
         project.setParent(product);
         
@@ -136,20 +193,20 @@ public class JiraSyncServiceImpl {
         return null;
     }
 
-    private Project findAgilefantProject(RemoteProject jiraProject) {
+    private Project findAgilefantProject(String projectName) {
         Collection<Project> projects = projectBusiness.retrieveAll();
         for (Project project : projects) {
-            if (project.getName().equals(jiraProject.getName())) {
+            if (project.getName().equals(projectName)) {
                 LOG.info(String.format("Project '%s' found.", project.getName()));
                 return project;
             }
         }
-        LOG.warning(String.format("Project '%s' could not be found.", jiraProject.getName()));
+        LOG.warning(String.format("Project '%s' could not be found.", projectName));
         return null;
     }
     
     public static void main(String[] args) {
-        JiraSyncServiceImpl service = new JiraSyncServiceImpl();
+//        JiraSyncServiceImpl service = new JiraSyncServiceImpl();
         
     }
 }
