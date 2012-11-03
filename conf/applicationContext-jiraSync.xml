@@ -5,4 +5,35 @@
 			  http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
 			  http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd">
 	<context:component-scan base-package="com.canoo.agilefant.jira" />
+
+	<!-- Schedule the worker thread for synchronizing with JIRA. -->
+	<bean id="jiraSyncBackgroundWorker" class="com.canoo.agilefant.jira.JiraSyncBackgroundWorker">
+		<property name="agilefantProductName" value="BKK" />
+		<property name="jiraProjectKey" value="UBA" />
+		<property name="jiraURL" value="http://10.0.1.2:8080/jira" />
+		<property name="jiraUser" value="agilefant" />
+		<property name="jiraPassword" value="pariolo" />
+	</bean>
+	
+	<bean id="jiraSync"
+		class="org.springframework.scheduling.timer.MethodInvokingTimerTaskFactoryBean">
+		<property name="targetObject" ref="jiraSyncBackgroundWorker" />
+		<property name="targetMethod" value="synchronizeJira" />
+	</bean>
+
+	<bean id="scheduledTask" class="org.springframework.scheduling.timer.ScheduledTimerTask">
+		<property name="delay" value="10000" />
+		<property name="period" value="600000" />
+		<property name="fixedRate" value="false" />
+		<property name="timerTask" ref="jiraSync" />
+	</bean>
+
+	<bean id="timerFactory" class="org.springframework.scheduling.timer.TimerFactoryBean">
+		<property name="scheduledTimerTasks">
+			<list>
+				<ref bean="scheduledTask" />
+			</list>
+		</property>
+	</bean>
+
 </beans>
