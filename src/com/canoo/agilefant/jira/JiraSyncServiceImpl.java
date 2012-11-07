@@ -4,9 +4,14 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.xml.rpc.ServiceException;
@@ -26,13 +31,45 @@ import com.canoo.jira.soap.client.JiraSoapServiceServiceLocator;
 import fi.hut.soberit.agilefant.business.IterationBusiness;
 import fi.hut.soberit.agilefant.business.ProductBusiness;
 import fi.hut.soberit.agilefant.business.ProjectBusiness;
+import fi.hut.soberit.agilefant.business.StoryBusiness;
+import fi.hut.soberit.agilefant.model.Backlog;
 import fi.hut.soberit.agilefant.model.Iteration;
 import fi.hut.soberit.agilefant.model.Product;
 import fi.hut.soberit.agilefant.model.Project;
+import fi.hut.soberit.agilefant.model.Story;
+import fi.hut.soberit.agilefant.util.Pair;
 
 @Service("jiraSyncService")
 public class JiraSyncServiceImpl {
     private static final Logger LOG = Logger.getLogger(JiraSyncServiceImpl.class.getName());
+    
+    private enum IssueType {
+        BUG("Bug"),
+        FEATURE("Feature"),
+        FETURE_REQUEST("Feature Request"),
+        IMPROVEMENT("Improvement"),
+        QUESTION("Question"),
+        STORY("Story"),
+        SUPPORT_ACCOUNT("Support Account"),
+        SUPPORT_INCIDENT("Support Incident"),
+        TASK("Task"),
+        SUB_TASK("Sub-task");
+        
+        private String typeName;
+
+        private IssueType(String typeName) {
+            this.typeName = typeName;
+        }
+        
+        public static IssueType fromTypeName(String typeName) {
+            for (IssueType issueType : IssueType.values()) {
+                if (issueType.typeName.equals(typeName)) {
+                    return issueType;
+                }
+            }
+            return null;
+        }
+    }
     
     @Autowired
     private ProductBusiness productBusiness;
@@ -42,6 +79,9 @@ public class JiraSyncServiceImpl {
     
     @Autowired
     private IterationBusiness iterationBusiness;
+    
+    @Autowired
+    private StoryBusiness storyBusiness;
     
     public void getAllJiraProducts() {
         LOG.info("Adding JIRA projects.");
@@ -104,28 +144,154 @@ public class JiraSyncServiceImpl {
     }
     
     public void synchronizeProject(String aProductName, String aProjectName, String jProjectKey, String jiraURL, String jiraUser, String jiraPassword) throws MalformedURLException, ServiceException, RemoteAuthenticationException, com.atlassian.jira.rpc.exception.RemoteException, RemoteException {
+        Map<String, Pair<Iteration, List<Story>>> versionStories = new HashMap<String, Pair<Iteration, List<Story>>>();
         JiraSoapService jiraService = getJiraService(jiraURL);
         String token = jiraService.login(jiraUser, jiraPassword);
 
+        // Sync JIRA project -> Agilefant project
         RemoteProject jiraProject = jiraService.getProjectByKey(token, jProjectKey);
-        
         Project project = findAgilefantProject(jiraProject.getName());
         if (project == null) {
             project = createAgilefantProject(jiraProject, aProductName);
         }
+        versionStories.put(null, new Pair<Iteration, List<Story>>(null, getProjectStories(project)));
         
+        // Sync JIRA versions -> Agilefant iterations
         RemoteVersion[] versions = jiraService.getVersions(token, jiraProject.getKey());
+        Collection<Iteration> iterationsForProject = findIterationsForProject(project);
         for (RemoteVersion version : versions) {
-            Iteration iteration = findIteration(version.getName());
+            Iteration iteration = findIteration(version.getName(), iterationsForProject);
             if (iteration == null) {
                 iteration = createIteration(version, project);
                 LOG.info(String.format("Iteration %s created. (%d)", iteration.getName(), iteration.getId()));
+                List<Story> emptyStoryList = Collections.emptyList();
+                versionStories.put(iteration.getName(), new Pair<Iteration, List<Story>>(iteration, emptyStoryList));
+            }
+            else {
+                versionStories.put(iteration.getName(), new Pair<Iteration, List<Story>>(iteration,storyBusiness.retrieveStoriesInIteration(iteration)));
             }
         }
         
+        // Sync JIRA issues -> Agilefant stories or tasks, depending on the issue type
         String[] projectKeys = {jProjectKey};
-//        RemoteIssue[] issues = jiraService.getIssuesFromTextSearchWithProject(token, projectKeys, "", 4000);
-//        LOG.info(String.format("%d issues returned.", issues.length));
+        RemoteIssue[] issues = jiraService.getIssuesFromTextSearchWithProject(token, projectKeys, "", 4000);
+//        RemoteIssue[] issues = {};
+        LOG.info(String.format("%d issues returned.", issues.length));
+        for (RemoteIssue issue : issues) {
+            String type = issue.getType();
+            
+            IssueType issueType = IssueType.fromTypeName(type);
+            switch (issueType) {
+            case BUG:
+            case TASK:
+            case SUB_TASK:
+                updateOrCreateTask(issue, project, versionStories);
+                break;
+            case STORY:
+            case IMPROVEMENT:
+            case FEATURE:
+            case FETURE_REQUEST:
+                updateOrCreateStory(issue, project, versionStories);
+                break;
+            case SUPPORT_ACCOUNT:
+            case SUPPORT_INCIDENT:
+            case QUESTION:
+                // Don't add these to Agilefant.
+                break;
+            default:
+                LOG.severe(String.format("JIRA issue type '%s' not covered by the JIRA sync service.", issueType.typeName));
+                break;
+            }
+        }
+    }
+
+    private List<Story> getProjectStories(Project project) {
+        List<Story> projectStories = new ArrayList<Story>();
+        
+        Collection<Story> allStories = storyBusiness.retrieveAll();
+        for (Story story : allStories) {
+            if (story.getBacklog().getId() == project.getId()) {
+                if (story.getIteration() == null) {
+                    projectStories.add(story);
+                }
+            }
+        }
+        
+        return projectStories;
+    }
+
+    private void updateOrCreateTask(RemoteIssue issue, Project project,
+            Map<String, Pair<Iteration, List<Story>>> versionStories) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    private void updateOrCreateStory(RemoteIssue issue, Project project, Map<String, Pair<Iteration, List<Story>>> versionStories) {
+        RemoteVersion[] fixVersions = issue.getFixVersions();
+
+        if ((fixVersions == null) || (fixVersions.length == 0)) {
+            Story story = getCachedStory(versionStories, null, issue);
+            // TODO per Nov 3, 2012: Implement updating.
+            return;
+        }
+
+        Arrays.sort(fixVersions, new Comparator<RemoteVersion>() {
+
+            @Override
+            public int compare(RemoteVersion o1, RemoteVersion o2) {
+                return o2.getSequence().compareTo(o1.getSequence());
+            }
+        });
+        
+        RemoteVersion remoteVersion = fixVersions[0];
+        
+        
+//        Story story = versionStories.get(issue.getSummary());
+//        story = findStory(issue);
+    }
+
+    private Story getCachedStory(Map<String, Pair<Iteration, List<Story>>> versionStories,
+            String versionName, RemoteIssue issue) {
+        
+        // First try to get the story from our loaded cache.
+        List<Story> stories = versionStories.get(versionName).getSecond();
+        for (Story story : stories) {
+            if (story.getName().equals(issue.getSummary())) {
+                return story;
+            }
+        }
+        
+        // If not in cache, it's a new story.
+        Story story = new Story();
+        story.setIteration(versionStories.get(versionName).getFirst());
+        story.setDescription(issue.getDescription());
+        story.setName(issue.getSummary());
+        
+        // Persist the new story, both in Agilefant DB and our cache.
+        int id = storyBusiness.create(story);
+        story = storyBusiness.retrieve(id);
+        stories.add(story);
+
+        return story;
+    }
+
+    private Story findStory(RemoteIssue issue) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    private Collection<Iteration> findIterationsForProject(Project project) {
+        Collection<Iteration> allIterations = iterationBusiness.retrieveAll();
+        List<Iteration> projectIterations = new ArrayList<Iteration>();
+        
+        for (Iteration iteration : allIterations) {
+            Backlog iterationProject = iteration.getParent();
+            if (iterationProject.getId() != project.getId()) {
+                break;
+            }
+            projectIterations.add(iteration);
+        }
+        return projectIterations;
     }
 
     private Iteration createIteration(RemoteVersion version, Project project) {
@@ -150,8 +316,7 @@ public class JiraSyncServiceImpl {
         return iterationBusiness.retrieve(iterationId);
     }
 
-    private Iteration findIteration(String name) {
-        Collection<Iteration> iterations = iterationBusiness.retrieveAll();
+    private Iteration findIteration(String name, Collection<Iteration> iterations) {
         for (Iteration iteration : iterations) {
             if (iteration.getName().equals(name)) {
                 LOG.info(String.format("Iteration '%s' found.", iteration.getName()));
